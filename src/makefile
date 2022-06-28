@@ -30,21 +30,22 @@ ZLOG_MAJOR=1
 ZLOG_MINOR=2
 
 # Fallback to gcc when $CC is not in $PATH.
-CC:=$(shell sh -c 'type $(CC) >/dev/null 2>/dev/null && echo $(CC) || echo gcc')
-OPTIMIZATION?=-O2
-WARNINGS=-Wall -Wstrict-prototypes -fwrapv
+CC = D:\mingw-w64\win32\mingw64\bin\gcc.exe
+#:=$(shell sh -c 'type $(CC) >/dev/null 2>/dev/null && echo $(CC) || echo gcc')
+OPTIMIZATION?=-O2 -D_MINGWIN
+WARNINGS=-Wall -fwrapv -static-libgcc
 DEBUG?= -g -ggdb
-REAL_CFLAGS=$(OPTIMIZATION) -fPIC -pthread $(CFLAGS) $(WARNINGS) $(DEBUG)
-REAL_LDFLAGS=$(LDFLAGS) -pthread
+REAL_CFLAGS=$(OPTIMIZATION) -fPIC $(CFLAGS) $(WARNINGS) $(DEBUG) -lpthread -lws2_32 -lwinmm  -lpsapi -lwsock32
+REAL_LDFLAGS=$(LDFLAGS) -lpthread -lws2_32 -lwsock32
 
-DYLIBSUFFIX=so
+DYLIBSUFFIX=dll
 STLIBSUFFIX=a
 DYLIB_MINOR_NAME=$(LIBNAME).$(DYLIBSUFFIX).$(ZLOG_MAJOR).$(ZLOG_MINOR)
 DYLIB_MAJOR_NAME=$(LIBNAME).$(DYLIBSUFFIX).$(ZLOG_MAJOR)
 DYLIBNAME=$(LIBNAME).$(DYLIBSUFFIX)
 DYLIB_MAKE_CMD=$(CC) -shared -Wl,-soname,$(DYLIB_MINOR_NAME) -o $(DYLIBNAME) $(LDFLAGS)
 STLIBNAME=$(LIBNAME).$(STLIBSUFFIX)
-STLIB_MAKE_CMD=ar rcs $(STLIBNAME)
+STLIB_MAKE_CMD=D:\mingw-w64\win32\mingw64\bin\ar rcs $(STLIBNAME)
 
 # Installation related variables
 PREFIX?=/usr/local
@@ -56,8 +57,8 @@ INSTALL_LIBRARY_PATH= $(PREFIX)/$(LIBRARY_PATH)
 INSTALL_BINARY_PATH=  $(PREFIX)/$(BINARY_PATH)
 
 # Platform-specific overrides
-uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
-compiler_platform := $(shell sh -c '$(CC) --version|grep -i apple')
+#uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
+#compiler_platform := $(shell sh -c '$(CC) --version|grep -i apple')
 
 ifeq ($(uname_S),SunOS)
 #  REAL_LDFLAGS+= -ldl -lnsl -lsocket
@@ -144,7 +145,7 @@ $(STLIBNAME): $(OBJ)
 	$(STLIB_MAKE_CMD) $(OBJ)
 
 dynamic: $(DYLIBNAME)
-static: $(STLIBNAME)
+static: $(STLIBNAME)cd
 
 # Binaries:
 zlog-chk-conf: zlog-chk-conf.o $(STLIBNAME) $(DYLIBNAME)

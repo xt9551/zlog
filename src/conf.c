@@ -237,6 +237,10 @@ static int zlog_conf_build_without_file(zlog_conf_t * a_conf)
 /*******************************************************************************/
 static int zlog_conf_parse_line(zlog_conf_t * a_conf, char *line, int *section);
 
+#ifdef _MINGWIN
+#define lstat(a,b) _stat(a,b)
+#endif
+
 static int zlog_conf_build_with_file(zlog_conf_t * a_conf)
 {
 	int rc = 0;
@@ -254,8 +258,12 @@ static int zlog_conf_build_with_file(zlog_conf_t * a_conf)
 
 	int section = 0;
 	/* [global:1] [levels:2] [formats:3] [rules:4] */
+//#ifdef _MINGWIN
+//    if (_stat(a_conf->file, &a_stat)) {
+//#else
+    if (lstat(a_conf->file, &a_stat)) {
+//#endif
 
-	if (lstat(a_conf->file, &a_stat)) {
 		zc_error("lstat conf file[%s] fail, errno[%d]", a_conf->file,
 			 errno);
 		return -1;

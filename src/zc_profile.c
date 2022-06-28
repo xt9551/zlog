@@ -26,7 +26,7 @@ static void zc_time(char *time_str, size_t time_str_size)
 	struct tm local_time;
 
 	time(&tt);
-	localtime_r(&tt, &local_time);
+	localtime_s(&tt, &local_time);
 	strftime(time_str, time_str_size, "%m-%d %T", &local_time);
 
 	return;

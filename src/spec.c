@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-#include <sys/time.h>
+//#include <sys/time.h>
 #include <time.h>
 #include <errno.h>
 #include <sys/types.h>
@@ -59,7 +59,7 @@ static int zlog_spec_write_time(zlog_spec_t * a_spec, zlog_thread_t * a_thread, 
 
 	/* When this event's last cached time_local is not now */
 	if (a_thread->event->time_local_sec != now_sec) {
-		localtime_r(&(now_sec), time_local);
+		localtime_s(&(now_sec), time_local);
 		a_thread->event->time_local_sec = now_sec;
 	}
 
@@ -230,7 +230,7 @@ static int zlog_spec_write_tid_long(zlog_spec_t * a_spec, zlog_thread_t * a_thre
 	/* and fork not change tid */
 	return zlog_buf_append(a_buf, a_thread->event->tid_str, a_thread->event->tid_str_len);
 }
-
+#ifndef _MINGWIN
 static int zlog_spec_write_ktid(zlog_spec_t * a_spec, zlog_thread_t * a_thread, zlog_buf_t * a_buf)
 {
 
@@ -238,6 +238,7 @@ static int zlog_spec_write_ktid(zlog_spec_t * a_spec, zlog_thread_t * a_thread, 
 	/* and fork not change tid */
 	return zlog_buf_append(a_buf, a_thread->event->ktid_str, a_thread->event->ktid_str_len);
 }
+#endif
 
 static int zlog_spec_write_level_lowercase(zlog_spec_t * a_spec, zlog_thread_t * a_thread, zlog_buf_t * a_buf)
 {
@@ -602,9 +603,11 @@ zlog_spec_t *zlog_spec_new(char *pattern_start, char **pattern_next, int *time_c
 		case 'H':
 			a_spec->write_buf = zlog_spec_write_hostname;
 			break;
+#ifndef _MINGWIN
 		case 'k':
 			a_spec->write_buf = zlog_spec_write_ktid;
 			break;
+#endif
 		case 'L':
 			a_spec->write_buf = zlog_spec_write_srcline;
 			break;

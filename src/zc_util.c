@@ -7,12 +7,12 @@
  */
 
 #include <string.h>
-#include <syslog.h>
+//#include <syslog.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <errno.h>
-
+#include "syslog.h"
 #include "zc_defs.h"
 
 size_t zc_parse_byte_size(char *astring)

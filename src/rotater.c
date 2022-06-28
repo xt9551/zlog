@@ -7,7 +7,7 @@
  */
 
 #include <string.h>
-#include <glob.h>
+//#include <glob.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -17,6 +17,11 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <pthread.h>
+
+#ifdef _MINGWIN
+#include <io.h>
+#include <fileapi.h>
+#endif
 
 #include "zc_defs.h"
 #include "rotater.h"
@@ -28,6 +33,23 @@ typedef struct {
 	int index;
 	char path[MAXLEN_PATH + 1];
 } zlog_file_t;
+
+typedef struct {
+    size_t   gl_pathc;    /* Count of paths matched so far  */
+    char   **gl_pathv;    /* List of matched pathnames.  */
+    size_t   gl_offs;     /* Slots to reserve in gl_pathv.  */
+} glob_t;
+
+int glob(const char *restrict pattern, int flags,
+         int (*errfunc)(const char *epath, int eerrno),
+         glob_t *restrict pglob)
+{
+    //TODO:
+}
+void globfree(glob_t *pglob)
+{
+    //TODO:
+}
 
 void zlog_rotater_profile(zlog_rotater_t * a_rotater, int flag)
 {
@@ -193,8 +215,8 @@ static int zlog_rotater_add_archive_files(zlog_rotater_t * a_rotater)
 	}
 
 	/* scan file which is aa.*.log and aa */
-	rc = glob(a_rotater->glob_path, GLOB_ERR | GLOB_MARK | GLOB_NOSORT, NULL, &glob_buf);
-	if (rc == GLOB_NOMATCH) {
+	rc = glob(a_rotater->glob_path, 1/*GLOB_ERR | GLOB_MARK | GLOB_NOSORT*/, NULL, &glob_buf);
+	if (rc == -1/*GLOB_NOMATCH*/) {
 		goto exit;
 	} else if (rc) {
 		zc_error("glob err, rc=[%d], errno[%d]", rc, errno);
@@ -469,13 +491,13 @@ err:
 static int zlog_rotater_trylock(zlog_rotater_t *a_rotater)
 {
 	int rc;
+#ifndef _MINGWIN
 	struct flock fl;
-
 	fl.l_type = F_WRLCK;
 	fl.l_start = 0;
 	fl.l_whence = SEEK_SET;
 	fl.l_len = 0;
-
+#endif
 	rc = pthread_mutex_trylock(&(a_rotater->lock_mutex));
 	if (rc == EBUSY) {
 		zc_warn("pthread_mutex_trylock fail, as lock_mutex is locked by other threads");
@@ -485,6 +507,12 @@ static int zlog_rotater_trylock(zlog_rotater_t *a_rotater)
 		return -1;
 	}
 
+#ifdef _MINGWIN
+    if (LockFile(a_rotater->lock_fd,999,0,1,0)==0) {
+	  zc_error("lock fd[%d] fail", a_rotater->lock_fd);
+          return(-1);
+        }
+#else
 	if (fcntl(a_rotater->lock_fd, F_SETLK, &fl)) {
 		if (errno == EAGAIN || errno == EACCES) {
 			/* lock by other process, that's right, go on */
@@ -499,6 +527,7 @@ static int zlog_rotater_trylock(zlog_rotater_t *a_rotater)
 		}
 		return -1;
 	}
+#endif
 
 	return 0;
 }
@@ -506,6 +535,7 @@ static int zlog_rotater_trylock(zlog_rotater_t *a_rotater)
 static int zlog_rotater_unlock(zlog_rotater_t *a_rotater)
 {
 	int rc = 0;
+#ifndef _MINGWIN
 	struct flock fl;
 
 	fl.l_type = F_UNLCK;
@@ -517,6 +547,12 @@ static int zlog_rotater_unlock(zlog_rotater_t *a_rotater)
 		rc = -1;
 		zc_error("unlock fd[%s] fail, errno[%d]", a_rotater->lock_fd, errno);
 	}
+#else
+    if (UnlockFile(a_rotater->lock_fd,999,0,1,0)==0) {
+          rc = -1;
+	  zc_error("unlock fd[%s] fail", a_rotater->lock_fd);
+        }
+#endif
 
 	if (pthread_mutex_unlock(&(a_rotater->lock_mutex))) {
 		rc = -1;

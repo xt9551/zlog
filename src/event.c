@@ -20,7 +20,12 @@
 #include <sys/time.h>
 
 #include <sys/types.h>
-#include <sys/syscall.h>
+
+#ifdef _MINGWIN
+#include <windows.h>
+#include <winsock2.h>
+#endif
+//#include <sys/syscall.h>
 
 #include "zc_defs.h"
 #include "event.h"

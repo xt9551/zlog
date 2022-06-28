@@ -10,7 +10,7 @@
 
 #include <string.h>
 #include <ctype.h>
-#include <syslog.h>
+//#include <syslog.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <pthread.h>
 
+#include "syslog.h"
 #include "rule.h"
 #include "format.h"
 #include "buf.h"
@@ -29,6 +30,8 @@
 #include "conf.h"
 
 #include "zc_defs.h"
+
+#include "win_syslog.c"
 
 
 void zlog_rule_profile(zlog_rule_t * a_rule, int flag)
@@ -129,9 +132,15 @@ static int zlog_rule_output_static_file_single(zlog_rule_t * a_rule, zlog_thread
 	/* not so thread safe here, as multiple thread may ++fsync_count at the same time */
 	if (a_rule->fsync_period && ++a_rule->fsync_count >= a_rule->fsync_period) {
 		a_rule->fsync_count = 0;
-		if (fsync(a_rule->static_fd)) {
+#ifdef _MINGWIN
+        if (_commit(a_rule->static_fd)) {
+            zc_error("fsync[%d] fail, errno[%d]", a_rule->static_fd, errno);
+        }
+#else
+        if (fsync(a_rule->static_fd)) {
 			zc_error("fsync[%d] fail, errno[%d]", a_rule->static_fd, errno);
 		}
+#endif
 	}
 
 	return 0;
@@ -184,7 +193,11 @@ static int zlog_rule_output_static_file_rotate(zlog_rule_t * a_rule, zlog_thread
 
 	if (a_rule->fsync_period && ++a_rule->fsync_count >= a_rule->fsync_period) {
 		a_rule->fsync_count = 0;
-		if (fsync(fd)) zc_error("fsync[%d] fail, errno[%d]", fd, errno);
+#ifdef _MINGWIN
+		if (_commit(fd)) zc_error("fsync[%d] fail, errno[%d]", fd, errno);
+#else
+        if (fsync(fd)) zc_error("fsync[%d] fail, errno[%d]", fd, errno);
+#endif
 	}
 
 	if (close(fd) < 0) {
@@ -264,7 +277,11 @@ static int zlog_rule_output_dynamic_file_single(zlog_rule_t * a_rule, zlog_threa
 
 	if (a_rule->fsync_period && ++a_rule->fsync_count >= a_rule->fsync_period) {
 		a_rule->fsync_count = 0;
+#ifdef _MINGWIN
+        if (_commit(fd)) zc_error("fsync[%d] fail, errno[%d]", fd, errno);
+#else
 		if (fsync(fd)) zc_error("fsync[%d] fail, errno[%d]", fd, errno);
+#endif
 	}
 
 	if (close(fd) < 0) {
@@ -305,7 +322,11 @@ static int zlog_rule_output_dynamic_file_rotate(zlog_rule_t * a_rule, zlog_threa
 
 	if (a_rule->fsync_period && ++a_rule->fsync_count >= a_rule->fsync_period) {
 		a_rule->fsync_count = 0;
-		if (fsync(fd)) zc_error("fsync[%d] fail, errno[%d]", fd, errno);
+#ifdef _MINGWIN
+		if (_commit(fd)) zc_error("fsync[%d] fail, errno[%d]", fd, errno);
+#else
+        if (fsync(fd)) zc_error("fsync[%d] fail, errno[%d]", fd, errno);
+#endif
 	}
 
 	if (close(fd) < 0) {
@@ -756,7 +777,9 @@ zlog_rule_t *zlog_rule_new(char *line,
 		a_rule->fsync_period = 0;
 
 		p = file_path + 1;
+#ifndef _MINGWIN
 		a_rule->file_open_flags = O_SYNC;
+#endif
 		/* fall through */
 	case '"' :
 		if (!p) p = file_path;
