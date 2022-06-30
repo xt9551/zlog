@@ -17,16 +17,49 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <unistd.h>
+#ifdef _MINGWIN
+#include <windows.h>
+#include <time.h>
+#include <tlhelp32.h>
+#include <io.h>
+#endif
 
 #include "conf.h"
 #include "spec.h"
 #include "level_list.h"
 #include "zc_defs.h"
 
-
+#ifdef _MINGWIN
+#define ZLOG_DEFAULT_TIME_FMT "%Y-%m-%d %H:%M:%S"
+#else
 #define ZLOG_DEFAULT_TIME_FMT "%F %T"
+#endif
 #define	ZLOG_HEX_HEAD  \
 	"\n             0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F    0123456789ABCDEF"
+#ifdef _MINGWIN
+void gettimeofday_zlog(struct timeval * currTime,void *dump)
+{
+    time_t clock;
+    struct tm tm;
+    SYSTEMTIME wtm;
+    GetLocalTime(&wtm);
+    tm.tm_year = wtm.wYear - 1900;
+    tm.tm_mon = wtm.wMonth - 1;
+    tm.tm_mday = wtm.wDay;
+    tm.tm_hour = wtm.wHour;
+    tm.tm_min = wtm.wMinute;
+    tm.tm_sec = wtm.wSecond;
+    tm.tm_isdst = -1;
+    clock = mktime(&tm);
+    currTime->tv_sec = clock;
+    currTime->tv_usec = wtm.wMilliseconds * 1000;
+}
+#else
+void gettimeofday_zlog(struct timeval * currTime,void *dump)
+{
+    return gettimeofday(currTime,NULL);
+}
+#endif
 
 /*******************************************************************************/
 void zlog_spec_profile(zlog_spec_t * a_spec, int flag)
@@ -53,7 +86,7 @@ static int zlog_spec_write_time(zlog_spec_t * a_spec, zlog_thread_t * a_thread, 
 
 	/* the event meet the 1st time_spec in his life cycle */
 	if (!now_sec) {
-		gettimeofday(&(a_thread->event->time_stamp), NULL);
+		gettimeofday_zlog(&(a_thread->event->time_stamp), NULL);
 		now_sec = a_thread->event->time_stamp.tv_sec;
 	}
 
@@ -101,7 +134,7 @@ static int zlog_spec_write_time_D(zlog_spec_t * a_spec, zlog_thread_t * a_thread
 static int zlog_spec_write_ms(zlog_spec_t * a_spec, zlog_thread_t * a_thread, zlog_buf_t * a_buf)
 {
 	if (!a_thread->event->time_stamp.tv_sec) {
-		gettimeofday(&(a_thread->event->time_stamp), NULL);
+		gettimeofday_zlog(&(a_thread->event->time_stamp), NULL);
 	}
 	return zlog_buf_printf_dec32(a_buf, (a_thread->event->time_stamp.tv_usec / 1000), 3);
 }
@@ -109,7 +142,7 @@ static int zlog_spec_write_ms(zlog_spec_t * a_spec, zlog_thread_t * a_thread, zl
 static int zlog_spec_write_us(zlog_spec_t * a_spec, zlog_thread_t * a_thread, zlog_buf_t * a_buf)
 {
 	if (!a_thread->event->time_stamp.tv_sec) {
-		gettimeofday(&(a_thread->event->time_stamp), NULL);
+		gettimeofday_zlog(&(a_thread->event->time_stamp), NULL);
 	}
 	return zlog_buf_printf_dec32(a_buf, a_thread->event->time_stamp.tv_usec, 6);
 }

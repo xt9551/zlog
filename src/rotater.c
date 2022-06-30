@@ -40,11 +40,15 @@ typedef struct {
     size_t   gl_offs;     /* Slots to reserve in gl_pathv.  */
 } glob_t;
 
+
+
+
 int glob(const char *restrict pattern, int flags,
          int (*errfunc)(const char *epath, int eerrno),
          glob_t *restrict pglob)
 {
     //TODO:
+
 }
 void globfree(glob_t *pglob)
 {

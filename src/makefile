@@ -187,6 +187,7 @@ install: $(DYLIBNAME) $(STLIBNAME)
 	@echo "WARNING: if this fails under Linux you probably need to install libc6-dev-i386"
 	@echo ""
 	$(MAKE) CFLAGS="-m32" LDFLAGS="-m32"
+#xcopy .\libzlog.a "D:\FE\maxt\git\fgui\sys\lib\mingwin32\" /Y
 
 gprof:
 	$(MAKE) CFLAGS="-pg" LDFLAGS="-pg"

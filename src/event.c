@@ -79,13 +79,14 @@ zlog_event_t *zlog_event_new(int time_cache_count)
 	 * at the zlog_init we gethostname,
 	 * u don't always change your hostname, eh?
 	 */
+#ifndef _MINGWIN
 	if (gethostname(a_event->host_name, sizeof(a_event->host_name) - 1)) {
 		zc_error("gethostname fail, errno[%d]", errno);
 		goto err;
 	}
 
 	a_event->host_name_len = strlen(a_event->host_name);
-
+#endif
 	/* tid is bound to a_event
 	 * as in whole lifecycle event persists
 	 * even fork to oth pid, tid not change

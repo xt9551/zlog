@@ -33,6 +33,37 @@
 
 #include "win_syslog.c"
 
+#ifdef _MINGWIN
+
+int zlogopen(char *f,int m,int p) {
+//	//HANDLE h = CreateFile(f,FILE_APPEND_DATA,
+//	HANDLE h = CreateFileA(f,FILE_APPEND_DATA,
+//			(FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE),
+//			NULL,
+//			OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+//  return(h);
+    return fopen(f,"a");
+}
+int zlogwrite(int fd,char *data,int len) {
+  int numb = 0;
+  int status;
+
+//  status = WriteFile(fd,data,len,&numb,NULL);
+//  if(status == 0) return(-1);
+//  return(numb);
+    numb = fwrite(data,1,len,fd);
+    return numb;
+}
+int zlogclose(int fd) {
+    fclose(fd);
+//  if(CloseHandle((HANDLE) fd)) return(0);
+//  return(-1);
+}
+#else
+#define zlogopen(f,m,p) open(f,m,p)
+#define zlogwrite(f,s,l) write(f,s,l)
+#define zlogclose(f) close(f)
+#endif
 
 void zlog_rule_profile(zlog_rule_t * a_rule, int flag)
 {
@@ -102,8 +133,8 @@ static int zlog_rule_output_static_file_single(zlog_rule_t * a_rule, zlog_thread
 	}
 
 	if (do_file_reload) {
-		close(a_rule->static_fd);
-		a_rule->static_fd = open(a_rule->file_path,
+        zlogclose(a_rule->static_fd);
+		a_rule->static_fd = zlogopen(a_rule->file_path,
 			O_WRONLY | O_APPEND | O_CREAT | a_rule->file_open_flags,
 			a_rule->file_perms);
 		if (a_rule->static_fd < 0) {
@@ -122,7 +153,7 @@ static int zlog_rule_output_static_file_single(zlog_rule_t * a_rule, zlog_thread
 		a_rule->static_ino = stb.st_ino;
 	}
 
-	if (write(a_rule->static_fd,
+	if (zlogwrite(a_rule->static_fd,
 			zlog_buf_str(a_thread->msg_buf),
 			zlog_buf_len(a_thread->msg_buf)) < 0) {
 		zc_error("write fail, errno[%d]", errno);
@@ -177,7 +208,7 @@ static int zlog_rule_output_static_file_rotate(zlog_rule_t * a_rule, zlog_thread
 		return -1;
 	}
 
-	fd = open(a_rule->file_path, 
+	fd = zlogopen(a_rule->file_path,
 		a_rule->file_open_flags | O_WRONLY | O_APPEND | O_CREAT, a_rule->file_perms);
 	if (fd < 0) {
 		zc_error("open file[%s] fail, errno[%d]", a_rule->file_path, errno);
@@ -185,9 +216,9 @@ static int zlog_rule_output_static_file_rotate(zlog_rule_t * a_rule, zlog_thread
 	}
 
 	len = zlog_buf_len(a_thread->msg_buf);
-	if (write(fd, zlog_buf_str(a_thread->msg_buf), len) < 0) {
+	if (zlogwrite(fd, zlog_buf_str(a_thread->msg_buf), len) < 0) {
 		zc_error("write fail, errno[%d]", errno);
-		close(fd);
+        zlogclose(fd);
 		return -1;
 	}
 
@@ -200,7 +231,7 @@ static int zlog_rule_output_static_file_rotate(zlog_rule_t * a_rule, zlog_thread
 #endif
 	}
 
-	if (close(fd) < 0) {
+	if (zlogclose(fd) < 0) {
 		zc_error("close fail, maybe cause by write, errno[%d]", errno);
 		return -1;
 	}
@@ -262,16 +293,16 @@ static int zlog_rule_output_dynamic_file_single(zlog_rule_t * a_rule, zlog_threa
 		return -1;
 	}
 
-	fd = open(zlog_buf_str(a_thread->path_buf),
+	fd = zlogopen(zlog_buf_str(a_thread->path_buf),
 		a_rule->file_open_flags | O_WRONLY | O_APPEND | O_CREAT, a_rule->file_perms);
 	if (fd < 0) {
 		zc_error("open file[%s] fail, errno[%d]", zlog_buf_str(a_thread->path_buf), errno);
 		return -1;
 	}
 
-	if (write(fd, zlog_buf_str(a_thread->msg_buf), zlog_buf_len(a_thread->msg_buf)) < 0) {
+	if (zlogwrite(fd, zlog_buf_str(a_thread->msg_buf), zlog_buf_len(a_thread->msg_buf)) < 0) {
 		zc_error("write fail, errno[%d]", errno);
-		close(fd);
+        zlogclose(fd);
 		return -1;
 	}
 
@@ -284,7 +315,7 @@ static int zlog_rule_output_dynamic_file_single(zlog_rule_t * a_rule, zlog_threa
 #endif
 	}
 
-	if (close(fd) < 0) {
+	if (zlogclose(fd) < 0) {
 		zc_error("close fail, maybe cause by write, errno[%d]", errno);
 		return -1;
 	}
@@ -307,16 +338,16 @@ static int zlog_rule_output_dynamic_file_rotate(zlog_rule_t * a_rule, zlog_threa
 	}
 
 	path = zlog_buf_str(a_thread->path_buf);
-	fd = open(path, a_rule->file_open_flags | O_WRONLY | O_APPEND | O_CREAT, a_rule->file_perms);
+	fd = zlogopen(path, a_rule->file_open_flags | O_WRONLY | O_APPEND | O_CREAT, a_rule->file_perms);
 	if (fd < 0) {
 		zc_error("open file[%s] fail, errno[%d]", zlog_buf_str(a_thread->path_buf), errno);
 		return -1;
 	}
 
 	len = zlog_buf_len(a_thread->msg_buf);
-	if (write(fd, zlog_buf_str(a_thread->msg_buf), len) < 0) {
+	if (zlogwrite(fd, zlog_buf_str(a_thread->msg_buf), len) < 0) {
 		zc_error("write fail, errno[%d]", errno);
-		close(fd);
+        zlogclose(fd);
 		return -1;
 	}
 
@@ -329,7 +360,7 @@ static int zlog_rule_output_dynamic_file_rotate(zlog_rule_t * a_rule, zlog_threa
 #endif
 	}
 
-	if (close(fd) < 0) {
+	if (zlogclose(fd) < 0) {
 		zc_error("write fail, maybe cause by write, errno[%d]", errno);
 		return -1;
 	}
@@ -367,7 +398,7 @@ static int zlog_rule_output_pipe(zlog_rule_t * a_rule, zlog_thread_t * a_thread)
 		return -1;
 	}
 
-	if (write(a_rule->pipe_fd,
+	if (zlogwrite(a_rule->pipe_fd,
 			zlog_buf_str(a_thread->msg_buf),
 			zlog_buf_len(a_thread->msg_buf)) < 0) {
 		zc_error("write fail, errno[%d]", errno);
@@ -457,13 +488,14 @@ static int zlog_rule_output_dynamic_record(zlog_rule_t * a_rule, zlog_thread_t *
 static int zlog_rule_output_stdout(zlog_rule_t * a_rule,
 				   zlog_thread_t * a_thread)
 {
-
+#ifndef _MINGWIN
 	if (zlog_format_gen_msg(a_rule->format, a_thread)) {
 		zc_error("zlog_format_gen_msg fail");
 		return -1;
 	}
+#endif
 
-	if (write(STDOUT_FILENO,
+	if (zlogwrite(STDOUT_FILENO,
 		zlog_buf_str(a_thread->msg_buf), zlog_buf_len(a_thread->msg_buf)) < 0) {
 		zc_error("write fail, errno[%d]", errno);
 		return -1;
@@ -481,7 +513,7 @@ static int zlog_rule_output_stderr(zlog_rule_t * a_rule,
 		return -1;
 	}
 
-	if (write(STDERR_FILENO,
+	if (zlogwrite(STDERR_FILENO,
 		zlog_buf_str(a_thread->msg_buf), zlog_buf_len(a_thread->msg_buf)) < 0) {
 		zc_error("write fail, errno[%d]", errno);
 		return -1;
@@ -833,7 +865,7 @@ zlog_rule_t *zlog_rule_new(char *line,
 				a_rule->output = zlog_rule_output_static_file_rotate;
 			}
 
-			a_rule->static_fd = open(a_rule->file_path,
+			a_rule->static_fd = zlogopen(a_rule->file_path,
 				O_WRONLY | O_APPEND | O_CREAT | a_rule->file_open_flags,
 				a_rule->file_perms);
 			if (a_rule->static_fd < 0) {
@@ -842,13 +874,15 @@ zlog_rule_t *zlog_rule_new(char *line,
 			}
 
 			/* save off the inode information for checking for a changed file later on */
+#ifndef _MINGWIN
 			if (fstat(a_rule->static_fd, &stb)) {
 				zc_error("stat [%s] fail, errno[%d], failing to open static_fd", a_rule->file_path, errno);
 				goto err;
 			}
+#endif
 
 			if (a_rule->archive_max_size > 0) {
-				close(a_rule->static_fd);
+                zlogclose(a_rule->static_fd);
 				a_rule->static_fd = -1;
 			}
 
@@ -968,7 +1002,7 @@ void zlog_rule_del(zlog_rule_t * a_rule)
 		a_rule->dynamic_specs = NULL;
 	}
 	if (a_rule->static_fd > 0) {
-		if (close(a_rule->static_fd)) {
+		if (zlogclose(a_rule->static_fd)) {
 			zc_error("close fail, maybe cause by write, errno[%d]", errno);
 		}
 	}

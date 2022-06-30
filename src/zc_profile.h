@@ -24,7 +24,9 @@ enum zc_profile_flag {
 	ZC_ERROR = 2
 };
 
-
+#ifdef _MINGWIN
+#define zc_debug(fmt,args...) printf("[Zlog]"fmt"\n", ##args)
+#else
 #if defined __STDC_VERSION__ && __STDC_VERSION__ >= 199901L
 	#define zc_debug(...) \
 		zc_profile_inner(ZC_DEBUG, __FILE__, __LINE__, __VA_ARGS__)
@@ -44,7 +46,7 @@ enum zc_profile_flag {
 	#define zc_profile(flag, fmt, args...) \
 		zc_profile_inner(flag, __FILE__, __LINE__, fmt, ## args)
 #endif
-
+#endif
 
 int zc_profile_inner(int flag, 
 		const char *file, const long line,
