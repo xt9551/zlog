@@ -11,7 +11,7 @@ int main(int argc, char** argv)
 
     int rc;
     zlog_category_t *c;
-
+    printf("hello!\n");
 
     rc = zlog_init("D:\\test\\zlog.conf");
     if (rc) {
@@ -19,7 +19,7 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    c = zlog_get_category("my_cat");
+    c = zlog_get_category("fgui_cat");
     if (!c) {
         printf("get cat fail\n");
         zlog_fini();
@@ -27,9 +27,9 @@ int main(int argc, char** argv)
     }
 
     zlog_info(c, "hello, zlog");
-    printf("hello!\n");
+    zlog_debug(c, "hello, zlog debug");
 
     zlog_fini();
-
+    printf("end\n");
     return 0;
 }
