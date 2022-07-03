@@ -34,31 +34,50 @@
 #include "win_syslog.c"
 
 #ifdef _MINGWIN
-
 int zlogopen(char *f,int m,int p) {
-//	//HANDLE h = CreateFile(f,FILE_APPEND_DATA,
-//	HANDLE h = CreateFileA(f,FILE_APPEND_DATA,
-//			(FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE),
-//			NULL,
-//			OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-//  return(h);
-    return fopen(f,"a");
+    //HANDLE h = CreateFile(f,FILE_APPEND_DATA,
+    HANDLE h = CreateFileA(f,FILE_APPEND_DATA,
+                           (FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE),
+                           NULL,
+                           OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    return(h);
 }
 int zlogwrite(int fd,char *data,int len) {
-  int numb = 0;
-  int status;
+    int numb = 0;
+    int status;
 
-//  status = WriteFile(fd,data,len,&numb,NULL);
-//  if(status == 0) return(-1);
-//  return(numb);
-    numb = fwrite(data,1,len,fd);
-    return numb;
+    status = WriteFile(fd,data,len,&numb,NULL);
+    if(status == 0) return(-1);
+    return(numb);
 }
 int zlogclose(int fd) {
-    fclose(fd);
-//  if(CloseHandle((HANDLE) fd)) return(0);
-//  return(-1);
+    if(CloseHandle(fd)) return(0);
+    return(-1);
 }
+//int zlogopen(char *f,int m,int p) {
+////	//HANDLE h = CreateFile(f,FILE_APPEND_DATA,
+////	HANDLE h = CreateFileA(f,FILE_APPEND_DATA,
+////			(FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE),
+////			NULL,
+////			OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+////  return(h);
+//    return fopen(f,"a");
+//}
+//int zlogwrite(int fd,char *data,int len) {
+//  int numb = 0;
+//  int status;
+//
+////  status = WriteFile(fd,data,len,&numb,NULL);
+////  if(status == 0) return(-1);
+////  return(numb);
+//    numb = fwrite(data,1,len,fd);
+//    return numb;
+//}
+//int zlogclose(int fd) {
+//    fclose(fd);
+////  if(CloseHandle((HANDLE) fd)) return(0);
+////  return(-1);
+//}
 #else
 #define zlogopen(f,m,p) open(f,m,p)
 #define zlogwrite(f,s,l) write(f,s,l)
@@ -488,19 +507,36 @@ static int zlog_rule_output_dynamic_record(zlog_rule_t * a_rule, zlog_thread_t *
 static int zlog_rule_output_stdout(zlog_rule_t * a_rule,
 				   zlog_thread_t * a_thread)
 {
-//#ifndef _MINGWIN
+#ifdef _MINGWIN
+    int iRet;
+
+    HANDLE lStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
+
+    if (zlog_format_gen_msg(a_rule->format, a_thread)) {
+        zc_error("zlog_format_gen_msg fail");
+        return -1;
+    }
+
+    iRet = zlogwrite(lStdOut,
+                     zlog_buf_str(a_thread->msg_buf), zlog_buf_len(a_thread->msg_buf));
+    if ( iRet< 0) {
+        zc_error("write fail[GLE=%d], errno[%d]",  GetLastError(), errno);
+        return -1;
+    }
+
+#else
 	if (zlog_format_gen_msg(a_rule->format, a_thread)) {
 		zc_error("zlog_format_gen_msg fail");
 		return -1;
 	}
-//#endif
+
 
 	if (zlogwrite(STDOUT_FILENO,
 		zlog_buf_str(a_thread->msg_buf), zlog_buf_len(a_thread->msg_buf)) < 0) {
 		zc_error("write fail, errno[%d]", errno);
 		return -1;
 	}
-
+#endif
 	return 0;
 }
 
@@ -875,7 +911,7 @@ zlog_rule_t *zlog_rule_new(char *line,
 
 			/* save off the inode information for checking for a changed file later on */
 #ifndef _MINGWIN
-			if (fstat(a_rule->static_fd, &stb)) {
+			if (_fstat(a_rule->static_fd, &stb)) {
 				zc_error("stat [%s] fail, errno[%d], failing to open static_fd", a_rule->file_path, errno);
 				goto err;
 			}

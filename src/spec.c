@@ -75,11 +75,13 @@ void zlog_spec_profile(zlog_spec_t * a_spec, int flag)
 	return;
 }
 
+
 /*******************************************************************************/
 /* implementation of write function */
 
 static int zlog_spec_write_time(zlog_spec_t * a_spec, zlog_thread_t * a_thread, zlog_buf_t * a_buf)
 {
+
 	zlog_time_cache_t * a_cache = a_thread->event->time_caches + a_spec->time_cache_index;
 	time_t now_sec = a_thread->event->time_stamp.tv_sec;
 	struct tm *time_local = &(a_thread->event->time_local);
@@ -92,7 +94,11 @@ static int zlog_spec_write_time(zlog_spec_t * a_spec, zlog_thread_t * a_thread, 
 
 	/* When this event's last cached time_local is not now */
 	if (a_thread->event->time_local_sec != now_sec) {
-		localtime_s(&(now_sec), time_local);
+#ifdef _MINGWIN
+		localtime_s(time_local,&(now_sec));
+#else
+        localtime_s(&(now_sec), time_local);
+#endif
 		a_thread->event->time_local_sec = now_sec;
 	}
 

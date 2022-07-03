@@ -26,9 +26,13 @@ int main(int argc, char** argv)
         return -2;
     }
 
-    zlog_info(c, "hello, zlog");
+    zlog_info(c, "hello, zlog info");
     zlog_debug(c, "hello, zlog debug");
-
+    zlog_notice(c, "hello, zlog_notice");
+    zlog_warn(c, "hello, zlog warn");
+    zlog_error(c, "hello, zlog_error");
+    zlog_fatal(c, "hello, zlog_fatal");
+    zlog_fatal(c, "--------------");
     zlog_fini();
     printf("end\n");
     return 0;

@@ -24,6 +24,13 @@
 #include "rotater.h"
 #include "zc_defs.h"
 
+#ifdef _MINGWIN
+#define DEF_TIME_FMT "%Y-%m-%d %H:%M:%S"
+#define snprintf _snprintf_s
+#else
+#define DEF_TIME_FMT "%F %T"
+#endif
+
 /*******************************************************************************/
 #define ZLOG_CONF_DEFAULT_FORMAT "default = \"%D %V [%p:%F:%L] %m%n\""
 #define ZLOG_CONF_DEFAULT_RULE "*.*        >stdout"
@@ -32,7 +39,11 @@
 #define ZLOG_CONF_DEFAULT_FILE_PERMS 0600
 #define ZLOG_CONF_DEFAULT_RELOAD_CONF_PERIOD 0
 #define ZLOG_CONF_DEFAULT_FSYNC_PERIOD 0
+#ifdef _MINGWIN
+#define ZLOG_CONF_BACKUP_ROTATE_LOCK_FILE "D:\\zlog.lock"
+#else
 #define ZLOG_CONF_BACKUP_ROTATE_LOCK_FILE "/tmp/zlog.lock"
+#endif
 /*******************************************************************************/
 
 void zlog_conf_profile(zlog_conf_t * a_conf, int flag)

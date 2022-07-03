@@ -48,11 +48,12 @@ int glob(const char *restrict pattern, int flags,
          glob_t *restrict pglob)
 {
     //TODO:
-
+    printf("glob!\n");
 }
 void globfree(glob_t *pglob)
 {
     //TODO:
+    printf("globfree!\n");
 }
 
 void zlog_rotater_profile(zlog_rotater_t * a_rotater, int flag)
